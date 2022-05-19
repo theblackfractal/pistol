@@ -1,10 +1,13 @@
 {
-  "name": "goldDeagle",
+  "name": "golddeagle",
+  "description": "A gold deagle",
   "start_url": "index.js",
   "components": [
     {
       "key": "aim",
-      "value": {}
+      "value": {
+        "ikHand": "right"
+      }
     },
     {
       "key": "use",
