@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import metaversefile from 'metaversefile';
 import { MathUtils } from 'three';
-const {useApp, useFrame, useActivate, useWear, useUse, useLocalPlayer, usePhysics, useScene, getNextInstanceId, getAppByPhysicsId, useWorld, useDefaultModules, useCleanup} = metaversefile;
+const {useApp, useFrame, useActivate, useWear, useUse, useLocalPlayer, usePhysics, useScene, getNextInstanceId, getAppByPhysicsId, useWorld, useDefaultModules, useCleanup, useSound} = metaversefile;
 
 const {clamp} = MathUtils;
 const baseUrl = import.meta.url.replace(/(\/)[^\/\\]*$/, '$1');
@@ -20,11 +20,12 @@ const fnEmptyArray = () => emptyArray;
 
 export default e => {
   const app = useApp();
-  app.name = 'pistol';
-
   const physics = usePhysics();
   const scene = useScene();
   
+  app.name = 'pistol';
+
+  const worldLights = app;
   /* const _updateSubAppMatrix = subApp => {
     subApp.updateMatrixWorld();
     app.position.copy(subApp.position);
@@ -33,6 +34,10 @@ export default e => {
     app.matrix.copy(subApp.matrix);
     app.matrixWorld.copy(subApp.matrixWorld);
   }; */
+  const sounds = useSound();
+  const soundFiles = sounds.getSoundFiles();
+  const soundIndex=soundFiles.combat.map(sound => sound.name).indexOf('combat/Colt45_Shot2.wav');
+  
   
   let pointLights = [];
   const gunPointLight = new THREE.PointLight(0xFFFFFF, 5);
@@ -40,9 +45,9 @@ export default e => {
   gunPointLight.startTime = 0;
   gunPointLight.endTime = 0;
   gunPointLight.initialIntensity = gunPointLight.intensity;
-  const world = useWorld();
-  const worldLights = world.getLights();
-  worldLights.add(gunPointLight);
+  // const world = useWorld();
+  // const worldLights = world.getLights();
+  // worldLights.add(gunPointLight);
   pointLights.push(gunPointLight);
   
   const bulletPointLight = new THREE.PointLight(0xef5350, 5, 10);
@@ -50,7 +55,7 @@ export default e => {
   bulletPointLight.startTime = 0;
   bulletPointLight.endTime = 0;
   bulletPointLight.initialIntensity = bulletPointLight.intensity;
-  worldLights.add(bulletPointLight);
+  // worldLights.add(bulletPointLight);
   pointLights.push(bulletPointLight);
 
   const textureLoader = new THREE.TextureLoader();
@@ -125,11 +130,12 @@ export default e => {
 
       await explosionApp.addModule(m);
       scene.add(explosionApp);
+      explosionApp.add( bulletPointLight );
       // metaversefile.addApp(explosionApp);
     }
     
     {
-      let u2 = `${baseUrl}goldDeagle.glb`;
+      let u2 = `${baseUrl}golddeagle.glb`;
       if (/^https?:/.test(u2)) {
         u2 = '/@proxy/' + u2;
       }
@@ -145,6 +151,7 @@ export default e => {
       gunApp.getPhysicsObjectsOriginal = gunApp.getPhysicsObjects;
       gunApp.getPhysicsObjects = fnEmptyArray;
       subApps[1] = gunApp;
+      gunApp.add(gunPointLight);
       
       const components = [
         {
@@ -212,6 +219,7 @@ export default e => {
         {
           const result = physics.raycast(gunApp.position, gunApp.quaternion.clone().multiply(z180Quaternion));
           if (result) {
+            
             const targetApp = getAppByPhysicsId(result.objectId);
 
             const normal = new THREE.Vector3().fromArray(result.normal);
@@ -336,7 +344,7 @@ export default e => {
             explosionApp.setComponent('rate', 0.5);
             explosionApp.use();
             
-            bulletPointLight.position.copy(explosionApp.position);
+            // bulletPointLight.position.copy(explosionApp.position);
             bulletPointLight.startTime = performance.now();
             bulletPointLight.endTime = bulletPointLight.startTime + bulletSparkTime;
           
@@ -358,13 +366,13 @@ export default e => {
               // hitDirection.y = 0;
               hitDirection.normalize();
               
-              const willDie = targetApp.willDieFrom(damage);
+              // const willDie = targetApp.willDieFrom(damage);
               targetApp.hit(damage, {
                 collisionId: result.objectId,
                 hitPosition,
                 hitDirection,
                 hitQuaternion,
-                willDie,
+                // willDie,
               });
             } else {
               console.warn('no app with physics id', result.objectId);
@@ -408,6 +416,7 @@ export default e => {
   
   useUse(e => {
     if (e.use && gunApp) {
+      sounds.playSound(soundFiles.combat[soundIndex]);
       gunApp.use();
     }
   });
@@ -428,8 +437,9 @@ export default e => {
     }
     
     if (gunApp) {
-      gunPointLight.position.copy(gunApp.position)
-        .add(localVector.copy(muzzleOffset).applyQuaternion(gunApp.quaternion));
+      
+      gunPointLight.position.set(0,0,0)
+      .add(localVector.copy(muzzleOffset).applyQuaternion(gunApp.quaternion));
       gunPointLight.updateMatrixWorld();
     }
       
